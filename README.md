@@ -192,7 +192,7 @@ The MICS6814 has three separate sensing elements that measure resistance. **Lowe
 - Detects oxidising gases by measuring resistance
 - Primary: NO2 (Nitrogen Dioxide) from vehicle exhaust, industrial emissions
 - Also detects: O3 (Ozone), Cl2 (Chlorine from cleaning products)
-- Higher values (50-100+ kΩ) = cleaner air
+- Higher values = cleaner air
 - Lower values = oxidising gases detected
 
 **Reducing (kΩ)**
@@ -209,19 +209,49 @@ The MICS6814 has three separate sensing elements that measure resistance. **Lowe
 - Higher values = cleaner air
 - Lower values = ammonia-type gases detected
 
+#### Typical Baseline Values (Clean Indoor Air)
+
+After a 10-48 hour warmup period, you should see values in these ranges:
+
+| Sensor | Clean Air Baseline | Alert Threshold | Investigation Needed |
+|--------|-------------------|-----------------|---------------------|
+| **Oxidising** | 100-600 kΩ | < 100 kΩ | < 50 kΩ |
+| **Reducing** | 1,000-10,000 kΩ | < 1,000 kΩ | < 500 kΩ |
+| **NH3** | 100-2,000 kΩ | < 200 kΩ | < 100 kΩ |
+
+**What to Watch For:**
+
+**Oxidising drops significantly:**
+- Vehicle exhaust nearby (NO2)
+- Outdoor pollution entering building
+- Strong cleaning products with bleach/chlorine
+
+**Reducing drops significantly:**
+- Cooking on gas stove
+- Incomplete combustion (check furnace/water heater)
+- Alcohol or solvent vapors
+- Potential CO hazard
+
+**NH3 drops significantly:**
+- Ammonia-based cleaning products in use
+- Fertilizers or pet waste nearby
+- Strong alcohol vapors
+
 **Important Notes About Gas Sensors:**
 - These sensors measure **resistance**, not concentration (e.g., not "50 ppm CO")
-- Readings are **relative** - establish a baseline in clean air and watch for changes
+- Readings are **relative** - establish YOUR baseline over 24-48 hours in normal conditions
 - Sensors cannot distinguish between different gases in the same category
 - Warm-up time required for stable readings (10-48 hours recommended)
-- Affected by temperature and humidity - best for detecting changes over time
-- If resistance drops significantly from baseline, investigate for gas sources
+- Affected by temperature and humidity - normalize comparisons to similar conditions
+- Watch for drops of 20-50% from your baseline - this indicates gas detection
+- Each sensor unit has unique baseline values - don't compare across different devices
 
 **Example Scenarios:**
-- Wave isopropyl alcohol near sensor → Reducing resistance drops
+- Wave isopropyl alcohol near sensor → Reducing resistance drops dramatically
 - Near busy road with traffic → Oxidising resistance drops (NO2)
-- Open ammonia-based cleaner → NH3 resistance drops
+- Open ammonia-based cleaner → NH3 resistance drops sharply
 - Natural gas leak (methane) → Reducing resistance drops
+- Cooking with gas stove → Reducing resistance temporarily decreases
 
 ## Monitoring
 
