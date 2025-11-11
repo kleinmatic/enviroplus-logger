@@ -190,6 +190,18 @@ TEMP_COMPENSATION_FACTOR=20   # Very light
 - If you have one installed, uncomment PMS5003 code
 - Otherwise, ignore these errors
 
+### Cron Job Not Running After Changes
+- Check crontab: `crontab -l`
+- Verify paths are correct (especially after folder renames)
+- Test manually first: `source ~/.virtualenvs/pimoroni/bin/activate && python3 /full/path/to/publish_to_adafruit.py`
+- Check for errors: `grep CRON /var/log/syslog` or check mail
+
+### Script Suddenly Stopped Publishing
+- Check if `python-dotenv` is installed: `pip list | grep dotenv`
+- Verify `.env` file exists and has credentials
+- Run manually to see error messages
+- Check Adafruit IO dashboard for service issues
+
 ## Security Considerations
 
 ### Sensitive Data
@@ -247,11 +259,31 @@ The architecture is designed for easy migration - just swap the publish function
 - [BME280 Datasheet](https://www.bosch-sensortec.com/products/environmental-sensors/humidity-sensors-bme280/)
 - [MICS6814 Datasheet](https://www.sgxsensortech.com/content/uploads/2015/02/1143_Datasheet-MiCS-6814-rev-8.pdf)
 
+## Project History & Gotchas
+
+### Known Issues to Watch For
+1. **After folder rename**: Always update crontab paths
+2. **Missing python-dotenv**: Script will fail to read `.env` - install with `pip install python-dotenv`
+3. **Overly broad .gitignore**: Initially blocked `requirements.txt` with `*.txt` pattern - now uses specific log file patterns
+
+### Important Paths
+- **Project location**: `~/Code/enviroplus-logger`
+- **Virtual environment**: `~/.virtualenvs/pimoroni`
+- **Log file**: `~/Code/enviroplus-logger/sensor_log.txt`
+- **Credentials**: `~/Code/enviroplus-logger/.env` (NOT in git)
+
+### Cron Job
+Current schedule: Every 5 minutes
+```
+*/5 * * * * /home/kleinmatic/.virtualenvs/pimoroni/bin/python3 /home/kleinmatic/Code/enviroplus-logger/publish_to_adafruit.py
+```
+
 ## Version History
 
-- **v1.0** (2025-01): Initial release
-  - Basic sensor reading
-  - Adafruit IO publishing
-  - Temperature compensation
-  - Auto feed creation
+- **v1.0** (2025-01-11): Initial release
+  - Basic sensor reading (BME280, LTR559, MICS6814)
+  - Adafruit IO publishing with auto feed creation
+  - Temperature compensation (configurable)
   - Cron-friendly logging
+  - Secure credential management via .env
+  - Standard requirements.txt for pip installation
