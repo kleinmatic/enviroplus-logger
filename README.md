@@ -62,10 +62,20 @@ Press Ctrl+C to exit each test.
 
 ### 1. Install Dependencies
 
+You can either use the setup script or install manually:
+
+**Option A: Use the setup script (recommended)**
 ```bash
-cd ~/Code/claude-enviroplus
+cd ~/Code/enviroplus-logger
 chmod +x setup_adafruit.sh
 ./setup_adafruit.sh
+```
+
+**Option B: Manual installation**
+```bash
+cd ~/Code/enviroplus-logger
+source ~/.virtualenvs/pimoroni/bin/activate
+pip install -r requirements.txt
 ```
 
 ### 2. Get Adafruit IO Credentials
@@ -97,8 +107,8 @@ TEMP_COMPENSATION_FACTOR=0
 ### 4. Test the Script
 
 ```bash
-source /home/kleinmatic/.virtualenvs/pimoroni/bin/activate
-cd ~/Code/claude-enviroplus
+source ~/.virtualenvs/pimoroni/bin/activate
+cd ~/Code/enviroplus-logger
 ./publish_to_adafruit.py
 ```
 
@@ -115,13 +125,13 @@ crontab -e
 Add this line:
 
 ```cron
-*/5 * * * * /home/kleinmatic/.virtualenvs/pimoroni/bin/python3 /home/kleinmatic/Code/claude-enviroplus/publish_to_adafruit.py
+*/5 * * * * ${HOME}/.virtualenvs/pimoroni/bin/python3 ${HOME}/Code/enviroplus-logger/publish_to_adafruit.py
 ```
 
 To run every 2 minutes:
 
 ```cron
-*/2 * * * * /home/kleinmatic/.virtualenvs/pimoroni/bin/python3 /home/kleinmatic/Code/claude-enviroplus/publish_to_adafruit.py
+*/2 * * * * ${HOME}/.virtualenvs/pimoroni/bin/python3 ${HOME}/Code/enviroplus-logger/publish_to_adafruit.py
 ```
 
 Save and exit. The script will now run automatically.

@@ -1,0 +1,15 @@
+# Dependencies for enviroplus-logger
+# Install with: pip install -r requirements.txt
+
+# Adafruit IO client library
+adafruit-io
+
+# Environment variable management
+python-dotenv
+
+# Note: The following are installed by the Pimoroni Enviro+ installer:
+# - enviroplus
+# - bme280
+# - ltr559
+# - smbus2
+# - st7735 (optional, for LCD display)

@@ -63,7 +63,7 @@ The Enviro+ is a sensor HAT for Raspberry Pi that includes:
 - **python-dotenv** - Environment variable management
 
 ### Virtual Environment
-Located at: `/home/kleinmatic/.virtualenvs/pimoroni`
+Located at: `~/.virtualenvs/pimoroni`
 
 Always activate before running:
 ```bash
