@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 
 """
-Reset (clear all data from) Adafruit IO feeds
+Reset (clear all data from) Adafruit IO feeds by deleting and recreating them
 Usage:
   ./reset_feed.py enviro-temperature          # Reset one feed
   ./reset_feed.py enviro-temperature enviro-pressure  # Reset multiple feeds
   ./reset_feed.py all                         # Reset all feeds
+
+Note: This deletes the entire feed and recreates it (faster than deleting
+individual data points which can trigger rate limiting).
 """
 
 import sys
@@ -39,38 +42,36 @@ ALL_FEEDS = [
 
 
 def reset_feed(aio, feed_name):
-    """Delete all data from a feed"""
+    """Reset a feed by deleting and recreating it"""
     try:
         print(f"Resetting feed: {feed_name}")
 
-        # Get all data from the feed
-        data = aio.data(feed_name)
+        # Check if feed exists
+        try:
+            feed = aio.feeds(feed_name)
+            print(f"  Feed exists, deleting...")
+        except RequestError as e:
+            if "404" in str(e):
+                print(f"  Feed {feed_name} does not exist - nothing to reset")
+                return False
+            else:
+                raise
 
-        if not data:
-            print(f"  No data to delete in {feed_name}")
-            return True
+        # Delete the feed (this deletes all data too)
+        aio.delete_feed(feed_name)
+        print(f"  Deleted feed {feed_name}")
 
-        print(f"  Found {len(data)} data points")
+        # Recreate the feed
+        from Adafruit_IO import Feed
+        new_feed = Feed(name=feed_name)
+        aio.create_feed(new_feed)
+        print(f"  Recreated feed {feed_name} (empty)")
 
-        # Delete each data point
-        deleted = 0
-        for point in data:
-            try:
-                aio.delete(feed_name, point.id)
-                deleted += 1
-            except Exception as e:
-                print(f"  Error deleting data point: {e}")
-
-        print(f"  Successfully deleted {deleted} data points from {feed_name}")
         return True
 
     except RequestError as e:
-        if "404" in str(e):
-            print(f"  Feed {feed_name} does not exist - skipping")
-            return False
-        else:
-            print(f"  Error resetting {feed_name}: {e}")
-            return False
+        print(f"  Error resetting {feed_name}: {e}")
+        return False
     except Exception as e:
         print(f"  Unexpected error: {e}")
         return False
@@ -105,7 +106,9 @@ def main():
         print(f"Resetting {len(feeds_to_reset)} feed(s)\n")
 
     # Confirm with user
-    response = input("Are you sure you want to delete all data from these feeds? (yes/no): ")
+    print("WARNING: This will DELETE and RECREATE the feeds, removing all data.")
+    print("The feeds will be empty after this operation.")
+    response = input("Are you sure you want to proceed? (yes/no): ")
     if response.lower() not in ['yes', 'y']:
         print("Cancelled")
         sys.exit(0)
