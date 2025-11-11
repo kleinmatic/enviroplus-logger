@@ -79,6 +79,12 @@ def read_sensors():
         bus = SMBus(1)
         bme280 = BME280(i2c_dev=bus)
 
+        # Discard first reading (BME280 returns stale data on first read)
+        _ = bme280.get_temperature()
+        _ = bme280.get_pressure()
+        _ = bme280.get_humidity()
+        time.sleep(0.1)  # Brief delay for sensor stabilization
+
         # Temperature with compensation
         cpu_temp = get_cpu_temperature()
         raw_temp = bme280.get_temperature()

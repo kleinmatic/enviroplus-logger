@@ -30,10 +30,15 @@ def main():
     bus = SMBus(1)
     bme280 = BME280(i2c_dev=bus)
 
+    # Discard first reading (BME280 returns stale data on first read)
+    _ = bme280.get_temperature()
+    _ = bme280.get_pressure()
+    _ = bme280.get_humidity()
+    time.sleep(0.1)  # Brief delay for sensor stabilization
+
     # CPU temperature compensation factor
     # Higher factor = less compensation. Set to 0 to disable compensation.
-    factor = 0
-    cpu_temps = [get_cpu_temperature()] * 5
+    factor = 1.71
 
     print("\n" + "="*60)
     print("ENVIRO+ SENSOR READINGS")
@@ -45,20 +50,18 @@ def main():
 
     # Get compensated temperature
     cpu_temp = get_cpu_temperature()
-    cpu_temps = cpu_temps[1:] + [cpu_temp]
-    avg_cpu_temp = sum(cpu_temps) / float(len(cpu_temps))
     raw_temp = bme280.get_temperature()
 
     # Calculate compensation
     if factor > 0:
-        compensation_amount = (avg_cpu_temp - raw_temp) / factor
+        compensation_amount = (cpu_temp - raw_temp) / factor
         comp_temp = raw_temp - compensation_amount
     else:
         compensation_amount = 0
         comp_temp = raw_temp
 
     print(f"  Raw Temperature:   {raw_temp:.2f} °C")
-    print(f"  CPU Temperature:   {avg_cpu_temp:.2f} °C")
+    print(f"  CPU Temperature:   {cpu_temp:.2f} °C")
     print(f"  Compensation:      -{compensation_amount:.2f} °C")
     print(f"  Compensated Temp:  {comp_temp:.2f} °C")
     print(f"  Pressure:          {bme280.get_pressure():.2f} hPa")
