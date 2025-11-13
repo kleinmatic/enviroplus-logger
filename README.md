@@ -1,6 +1,6 @@
 # Enviro+ Sensor Logger to Adafruit IO
 
-Publish sensor readings from your Pimoroni Enviro+ HAT to Adafruit IO for monitoring and visualization.
+Publish sensor readings from your Pimoroni Enviro+ HAT to Adafruit IO for monitoring and visualization. This project was vibe-coded with Claude Code.
 
 ## Hardware Requirements
 
