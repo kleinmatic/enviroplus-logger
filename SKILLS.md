@@ -219,24 +219,66 @@ TEMP_COMPENSATION_FACTOR=20   # Very light
 - No local web server or open ports
 - Outbound connections only
 
-## Migration to Home Assistant
+## Home Assistant Integration
 
-When ready to self-host with Home Assistant:
+**Status**: Fully integrated and operational (as of 2025-11-16)
 
-1. Set up MQTT broker (Mosquitto)
-2. Replace `publish_to_adafruit()` with MQTT publish
-3. Use same sensor reading code
-4. Home Assistant auto-discovers MQTT sensors
+The project now supports dual publishing to both Adafruit IO and Home Assistant simultaneously.
 
-The architecture is designed for easy migration - just swap the publish function.
+### Architecture
+- **MQTT Broker**: Mosquitto add-on in Home Assistant
+- **Discovery Protocol**: Home Assistant MQTT Discovery (automatic sensor detection)
+- **Connection**: Direct MQTT connection to homeassistant.local:1883
+- **Authentication**: Username/password stored in .env file
+
+### Configuration
+Both publishing destinations can be independently enabled/disabled via `.env`:
+```
+ENABLE_ADAFRUIT_IO=true
+ENABLE_HOMEASSISTANT=true
+```
+
+### MQTT Settings
+```
+MQTT_BROKER=homeassistant.local
+MQTT_PORT=1883
+MQTT_USERNAME=enviroplus
+MQTT_PASSWORD=<stored in .env>
+```
+
+### How It Works
+1. Script reads sensors once
+2. Publishes to Adafruit IO (if enabled)
+3. Publishes to Home Assistant via MQTT (if enabled)
+4. Home Assistant auto-discovers sensors via MQTT Discovery protocol
+5. All 8 sensors appear as a single "Enviro+ Sensor" device in Home Assistant
+
+### Sensors in Home Assistant
+All sensors include proper device classes, units, and icons:
+- **Temperature**: °C (device_class: temperature)
+- **Pressure**: hPa (device_class: atmospheric_pressure)
+- **Humidity**: % (device_class: humidity)
+- **Light**: lx (device_class: illuminance)
+- **Proximity**: no unit
+- **Oxidising**: kΩ (gas resistance)
+- **Reducing**: kΩ (gas resistance)
+- **NH3**: kΩ (gas resistance)
+
+### Known Issues
+- **Light sensor unit**: Must use 'lx' not 'lux' for illuminance device_class in Home Assistant
+- **Discovery retained messages**: Old MQTT discovery configs are retained; if changing sensor configs, may need to clear retained messages
 
 ## Development Notes
 
 ### Testing Changes
 1. Always test manually before setting up cron
 2. Check both stdout and log file output
-3. Verify data appears correctly in Adafruit IO
-4. Test with invalid credentials to verify error handling
+3. Verify data appears correctly in Adafruit IO (if enabled)
+4. Verify sensors appear in Home Assistant (if enabled)
+   - Settings → Devices & Services → MQTT → Enviro+ Sensor
+   - Developer Tools → States (filter for "enviro")
+5. Test with invalid credentials to verify error handling
+6. Test enabling/disabling each service independently
 
 ### Code Style
 - Python 3 standard library preferred
@@ -245,10 +287,10 @@ The architecture is designed for easy migration - just swap the publish function
 - Exception handling for all I/O
 
 ### Future Enhancements
+- [x] Add Home Assistant MQTT mode (completed 2025-11-16)
 - [ ] Add display output (LCD) option
 - [ ] Add noise level monitoring (microphone)
 - [ ] Add local SQLite caching for offline resilience
-- [ ] Add Home Assistant MQTT mode
 - [ ] Add air quality index calculation
 - [ ] Add email/SMS alerts for threshold breaches
 
@@ -256,6 +298,7 @@ The architecture is designed for easy migration - just swap the publish function
 
 - [Pimoroni Enviro+ GitHub](https://github.com/pimoroni/enviroplus-python)
 - [Adafruit IO Documentation](https://io.adafruit.com/api/docs)
+- [Home Assistant MQTT Discovery](https://www.home-assistant.io/integrations/mqtt/#mqtt-discovery)
 - [BME280 Datasheet](https://www.bosch-sensortec.com/products/environmental-sensors/humidity-sensors-bme280/)
 - [MICS6814 Datasheet](https://www.sgxsensortech.com/content/uploads/2015/02/1143_Datasheet-MiCS-6814-rev-8.pdf)
 
@@ -264,7 +307,9 @@ The architecture is designed for easy migration - just swap the publish function
 ### Known Issues to Watch For
 1. **After folder rename**: Always update crontab paths
 2. **Missing python-dotenv**: Script will fail to read `.env` - install with `pip install python-dotenv`
-3. **Overly broad .gitignore**: Initially blocked `requirements.txt` with `*.txt` pattern - now uses specific log file patterns
+3. **Missing paho-mqtt**: Required for Home Assistant integration - install with `pip install paho-mqtt`
+4. **Overly broad .gitignore**: Initially blocked `requirements.txt` with `*.txt` pattern - now uses specific log file patterns
+5. **Light sensor MQTT discovery**: Must use unit 'lx' not 'lux' for Home Assistant illuminance device_class
 
 ### Important Paths
 - **Project location**: `~/Code/enviroplus-logger`
@@ -279,6 +324,14 @@ Current schedule: Every 5 minutes
 ```
 
 ## Version History
+
+- **v2.0** (2025-11-16): Home Assistant integration
+  - Added Home Assistant MQTT publishing with auto-discovery
+  - Dual publishing to both Adafruit IO and Home Assistant
+  - Independent enable/disable flags for each service
+  - Added paho-mqtt dependency
+  - All 8 sensors auto-discovered in Home Assistant as single device
+  - Proper device classes, units, and icons for Home Assistant
 
 - **v1.0** (2025-01-11): Initial release
   - Basic sensor reading (BME280, LTR559, MICS6814)

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-Publish Enviro+ sensor readings to Adafruit IO
+Publish Enviro+ sensor readings to Adafruit IO and Home Assistant
 Designed to be run via cron
 """
 
@@ -9,6 +9,7 @@ import sys
 import os
 import time
 import logging
+import json
 from pathlib import Path
 from datetime import datetime
 from bme280 import BME280
@@ -22,6 +23,7 @@ except ImportError:
 
 from enviroplus import gas
 from Adafruit_IO import Client, RequestError
+import paho.mqtt.client as mqtt
 
 # Load environment variables from .env file
 try:
@@ -51,8 +53,20 @@ logging.basicConfig(
 # ============================================
 # CONFIGURATION - Load from environment variables
 # ============================================
+
+# Publishing control flags (default both to true)
+ENABLE_ADAFRUIT_IO = os.getenv('ENABLE_ADAFRUIT_IO', 'true').lower() == 'true'
+ENABLE_HOMEASSISTANT = os.getenv('ENABLE_HOMEASSISTANT', 'true').lower() == 'true'
+
+# Adafruit IO Configuration
 ADAFRUIT_IO_USERNAME = os.getenv('ADAFRUIT_IO_USERNAME')
 ADAFRUIT_IO_KEY = os.getenv('ADAFRUIT_IO_KEY')
+
+# Home Assistant MQTT Configuration
+MQTT_BROKER = os.getenv('MQTT_BROKER', 'homeassistant.local')
+MQTT_PORT = int(os.getenv('MQTT_PORT', '1883'))
+MQTT_USERNAME = os.getenv('MQTT_USERNAME')
+MQTT_PASSWORD = os.getenv('MQTT_PASSWORD')
 
 # Temperature compensation factor (set to 0 to disable)
 TEMP_COMPENSATION_FACTOR = float(os.getenv('TEMP_COMPENSATION_FACTOR', '0'))
@@ -187,9 +201,146 @@ def publish_to_adafruit(sensors):
         return False
 
 
+def publish_to_homeassistant(sensors):
+    """Publish sensor data to Home Assistant via MQTT with auto-discovery"""
+
+    # Check if MQTT is configured
+    if not MQTT_USERNAME or not MQTT_PASSWORD:
+        logging.info("MQTT credentials not configured - skipping Home Assistant publishing")
+        return True
+
+    try:
+        # Create MQTT client
+        client = mqtt.Client(client_id="enviroplus", protocol=mqtt.MQTTv5)
+        client.username_pw_set(MQTT_USERNAME, MQTT_PASSWORD)
+
+        # Connect to broker
+        logging.info(f"Connecting to MQTT broker at {MQTT_BROKER}:{MQTT_PORT}")
+        client.connect(MQTT_BROKER, MQTT_PORT, 60)
+        client.loop_start()
+
+        # Give connection time to establish
+        time.sleep(1)
+
+        # Define sensor configurations for MQTT Discovery
+        sensor_configs = {
+            'temperature': {
+                'name': 'Enviro+ Temperature',
+                'unit': '°C',
+                'device_class': 'temperature',
+                'icon': 'mdi:thermometer'
+            },
+            'pressure': {
+                'name': 'Enviro+ Pressure',
+                'unit': 'hPa',
+                'device_class': 'atmospheric_pressure',
+                'icon': 'mdi:gauge'
+            },
+            'humidity': {
+                'name': 'Enviro+ Humidity',
+                'unit': '%',
+                'device_class': 'humidity',
+                'icon': 'mdi:water-percent'
+            },
+            'light': {
+                'name': 'Enviro+ Light Level',
+                'unit': 'lx',
+                'device_class': 'illuminance',
+                'icon': 'mdi:brightness-5'
+            },
+            'proximity': {
+                'name': 'Enviro+ Proximity',
+                'unit': '',
+                'icon': 'mdi:hand-wave'
+            },
+            'oxidising': {
+                'name': 'Enviro+ Oxidising',
+                'unit': 'kΩ',
+                'icon': 'mdi:molecule'
+            },
+            'reducing': {
+                'name': 'Enviro+ Reducing',
+                'unit': 'kΩ',
+                'icon': 'mdi:molecule'
+            },
+            'nh3': {
+                'name': 'Enviro+ NH3',
+                'unit': 'kΩ',
+                'icon': 'mdi:molecule'
+            }
+        }
+
+        # Device information (groups all sensors together in HA)
+        device_info = {
+            'identifiers': ['enviroplus_sensor'],
+            'name': 'Enviro+ Sensor',
+            'model': 'Pimoroni Enviro+',
+            'manufacturer': 'Pimoroni'
+        }
+
+        # Publish discovery configs and sensor values
+        for sensor_key, sensor_value in sensors.items():
+            if sensor_key in sensor_configs:
+                config = sensor_configs[sensor_key]
+
+                # MQTT Discovery configuration
+                discovery_topic = f"homeassistant/sensor/enviroplus/{sensor_key}/config"
+                state_topic = f"homeassistant/sensor/enviroplus/{sensor_key}/state"
+
+                discovery_payload = {
+                    'name': config['name'],
+                    'state_topic': state_topic,
+                    'unique_id': f'enviroplus_{sensor_key}',
+                    'device': device_info,
+                    'icon': config['icon']
+                }
+
+                # Add unit and device_class if present
+                if config.get('unit'):
+                    discovery_payload['unit_of_measurement'] = config['unit']
+                if config.get('device_class'):
+                    discovery_payload['device_class'] = config['device_class']
+
+                # Publish discovery config
+                client.publish(discovery_topic, json.dumps(discovery_payload), qos=1, retain=True)
+                logging.info(f"Published MQTT discovery for {sensor_key}")
+
+                # Publish sensor value
+                client.publish(state_topic, str(sensor_value), qos=1, retain=True)
+                logging.info(f"Published {sensor_key}: {sensor_value} to Home Assistant")
+
+                # Small delay to avoid overwhelming the broker
+                time.sleep(0.2)
+
+        # Clean disconnect
+        time.sleep(1)
+        client.loop_stop()
+        client.disconnect()
+
+        logging.info("Successfully published all data to Home Assistant")
+        return True
+
+    except Exception as e:
+        logging.error(f"Error publishing to Home Assistant: {e}")
+        return False
+
+
 def main():
     logging.info("=" * 60)
     logging.info("Starting Enviro+ sensor read and publish")
+
+    # Log which services are enabled
+    services_enabled = []
+    if ENABLE_ADAFRUIT_IO:
+        services_enabled.append("Adafruit IO")
+    if ENABLE_HOMEASSISTANT:
+        services_enabled.append("Home Assistant")
+
+    if not services_enabled:
+        logging.error("No publishing services enabled! Check ENABLE_ADAFRUIT_IO and ENABLE_HOMEASSISTANT in .env")
+        sys.exit(1)
+
+    logging.info(f"Publishing enabled for: {', '.join(services_enabled)}")
 
     # Read sensors
     sensors = read_sensors()
@@ -197,14 +348,26 @@ def main():
         logging.error("Failed to read sensors - aborting")
         sys.exit(1)
 
-    # Publish to Adafruit IO
-    success = publish_to_adafruit(sensors)
+    # Publish to enabled services
+    adafruit_success = True  # Default to success if disabled
+    homeassistant_success = True  # Default to success if disabled
 
-    if success:
+    if ENABLE_ADAFRUIT_IO:
+        adafruit_success = publish_to_adafruit(sensors)
+    else:
+        logging.info("Adafruit IO publishing disabled - skipping")
+
+    if ENABLE_HOMEASSISTANT:
+        homeassistant_success = publish_to_homeassistant(sensors)
+    else:
+        logging.info("Home Assistant publishing disabled - skipping")
+
+    # Consider it a success if all enabled services worked
+    if adafruit_success and homeassistant_success:
         logging.info("Sensor reading and publishing completed successfully")
         sys.exit(0)
     else:
-        logging.error("Failed to publish data")
+        logging.error("Failed to publish data to one or more enabled services")
         sys.exit(1)
 
 

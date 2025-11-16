@@ -7,6 +7,9 @@ adafruit-io
 # Environment variable management
 python-dotenv
 
+# MQTT client for Home Assistant
+paho-mqtt
+
 # Note: The following are installed by the Pimoroni Enviro+ installer:
 # - enviroplus
 # - bme280

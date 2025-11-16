@@ -1,6 +1,6 @@
-# Enviro+ Sensor Logger to Adafruit IO
+# Enviro+ Sensor Logger
 
-Publish sensor readings from your Pimoroni Enviro+ HAT to Adafruit IO for monitoring and visualization. This project was vibe-coded with Claude Code.
+Publish sensor readings from your Pimoroni Enviro+ HAT to Adafruit IO and/or Home Assistant for monitoring and visualization. This project was vibe-coded with Claude Code.
 
 ## Hardware Requirements
 
@@ -94,11 +94,24 @@ cd ~/Code/enviroplus-logger
 cp .env.example .env
 ```
 
-Edit `.env` and add your Adafruit IO credentials:
+Edit `.env` and add your credentials:
 
 ```bash
+# Publishing control (set to true/false)
+ENABLE_ADAFRUIT_IO=true
+ENABLE_HOMEASSISTANT=false
+
+# Adafruit IO credentials (get from https://io.adafruit.com)
 ADAFRUIT_IO_USERNAME=yourusername
 ADAFRUIT_IO_KEY=aio_abc123yourkeyhere
+
+# Home Assistant MQTT (optional - see Home Assistant Setup section)
+MQTT_BROKER=homeassistant.local
+MQTT_PORT=1883
+MQTT_USERNAME=enviroplus
+MQTT_PASSWORD=your_mqtt_password_here
+
+# Temperature compensation factor (set to 0 to disable)
 TEMP_COMPENSATION_FACTOR=0
 ```
 
@@ -151,6 +164,62 @@ The script creates these feeds:
 - `enviro-oxidising` (kΩ)
 - `enviro-reducing` (kΩ)
 - `enviro-nh3` (kΩ)
+
+## Home Assistant Setup (Optional)
+
+The script can also publish to Home Assistant via MQTT for local data storage and advanced automation.
+
+### 1. Install Mosquitto MQTT Broker in Home Assistant
+
+1. Open Home Assistant web interface
+2. Go to **Settings** → **Add-ons** → **Add-on Store**
+3. Search for "Mosquitto broker"
+4. Click **Install**
+5. After installation, go to **Configuration** tab
+6. Add a user for the Enviro+:
+```yaml
+logins:
+  - username: enviroplus
+    password: YOUR_SECURE_PASSWORD
+```
+7. Click **Save**, then go to **Info** tab
+8. Enable **Start on boot** and click **START**
+
+### 2. Enable MQTT Integration
+
+1. Go to **Settings** → **Devices & Services**
+2. Click **+ ADD INTEGRATION**
+3. Search for and add **MQTT**
+4. It should auto-discover your Mosquitto broker
+
+### 3. Configure Home Assistant Credentials
+
+Edit your `.env` file to enable Home Assistant publishing:
+
+```bash
+# Enable/disable each service
+ENABLE_ADAFRUIT_IO=true
+ENABLE_HOMEASSISTANT=true
+
+# Home Assistant MQTT settings
+MQTT_BROKER=homeassistant.local
+MQTT_PORT=1883
+MQTT_USERNAME=enviroplus
+MQTT_PASSWORD=YOUR_SECURE_PASSWORD
+```
+
+**Note**: You can independently enable/disable Adafruit IO and Home Assistant by setting these to `true` or `false`.
+
+### 4. Verify Sensors in Home Assistant
+
+After the script runs, your sensors will automatically appear:
+
+1. Go to **Settings** → **Devices & Services** → **MQTT**
+2. Look for the **"Enviro+ Sensor"** device
+3. All 8 sensors will be grouped under this device
+4. You can now create dashboards, automations, and view historical data
+
+The sensors will appear with proper units, icons, and device classes for best Home Assistant integration.
 
 ## Understanding the Sensors
 

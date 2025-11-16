@@ -88,11 +88,16 @@ When adding a new sensor to the project:
 1. **Import**: Add sensor library import at top of file
 2. **Initialize**: Add initialization in `read_sensors()` function
 3. **Read**: Get sensor value and add to `sensors` dict with clear key name
-4. **Publish**: Add feed mapping in `publish_to_adafruit()` feed_mapping dict
-5. **Document**: Update README.md sensor list and descriptions
-6. **Update SKILLS.md**: Add sensor details to hardware section
-7. **Test**: Run manually at least 3 times to verify stability
-8. **Rate limit check**: Ensure total sensors × 0.5 seconds < 30 seconds
+4. **Publish to Adafruit IO**: Add feed mapping in `publish_to_adafruit()` feed_mapping dict
+5. **Publish to Home Assistant**: Add sensor config in `publish_to_homeassistant()` sensor_configs dict
+   - Include proper `device_class` if applicable (see Home Assistant docs)
+   - Choose correct `unit_of_measurement` (check compatibility with device_class!)
+   - Select appropriate icon from Material Design Icons (mdi:)
+6. **Document**: Update README.md sensor list and descriptions
+7. **Update SKILLS.md**: Add sensor details to hardware section
+8. **Test**: Run manually at least 3 times to verify stability
+9. **Verify in Home Assistant**: Check sensor appears in States tab and has correct unit/icon
+10. **Rate limit check**: Ensure total sensors × 0.5 seconds < 30 seconds (Adafruit IO limit)
 
 ## Cron Job Considerations
 
@@ -118,32 +123,54 @@ When adding a new sensor to the project:
 - Test with the hardware when possible
 - Explain trade-offs clearly to the user
 
-## Migration Path
+## Home Assistant Integration
 
-This project is designed for eventual migration to Home Assistant:
+**Status**: Completed (2025-11-16)
 
-- Keep sensor reading code separate from publishing code
-- Use standard Python patterns (no Adafruit-specific code in sensor reading)
-- Make it easy to swap `publish_to_adafruit()` with MQTT publishing
-- Don't tightly couple sensors to Adafruit IO feed structure
+The project now supports dual publishing to both Adafruit IO and Home Assistant.
+
+### MQTT Discovery Configuration
+- Each sensor must have proper `device_class` to work correctly in Home Assistant
+- **Critical**: Light sensor must use unit 'lx' (not 'lux') for illuminance device_class
+- All sensors include icons using 'mdi:' prefix (Material Design Icons)
+- Sensors are grouped under single device: "Enviro+ Sensor"
+- Discovery configs are published with `retain=True` for persistence
+
+### Testing Home Assistant Changes
+1. **Verify MQTT broker connectivity** before publishing
+2. **Check Home Assistant logs** for discovery errors (Settings → System → Logs)
+3. **Verify sensors in States tab** (Developer Tools → States, filter "enviro")
+4. **Check device in MQTT integration** (Settings → Devices & Services → MQTT)
+5. **Clear retained messages** if changing sensor configs (use MQTT Developer Tools)
+
+### Publishing Control
+- Both services can be enabled/disabled independently via `.env`
+- Script succeeds if at least one enabled service publishes successfully
+- If both are disabled, script exits with error
+- Always log which services are enabled at startup
 
 ## Common Mistakes to Avoid
 
-1. **Don't assume feeds exist** - Always include auto-creation logic
-2. **Don't ignore rate limits** - This will cause 429 errors
+1. **Don't assume feeds exist** - Always include auto-creation logic (Adafruit IO)
+2. **Don't ignore rate limits** - This will cause 429 errors (Adafruit IO)
 3. **Don't add verbose logging** - Preserves microSD card lifespan
 4. **Don't test gas sensors for < 10 minutes** - Warm-up time is real
 5. **Don't forget the virtual environment** - All pip installs and python runs need it activated
 6. **Don't commit .env file** - Check git status before committing
 7. **Don't remove the BME280 first reading discard** - It's essential for accuracy
+8. **Don't use 'lux' as unit for illuminance device_class** - Use 'lx' for Home Assistant
+9. **Don't forget to test both publishing destinations** - If both enabled, verify both work
+10. **Don't skip checking Home Assistant logs** - MQTT discovery errors only appear there
 
 ## Questions to Ask User
 
 Before making significant changes, confirm:
 
-- **New sensors**: "Should this publish to Adafruit IO or just log locally?"
+- **New sensors**: "Should this publish to Adafruit IO, Home Assistant, or both?"
+- **Publishing destinations**: "Do you want to keep publishing to Adafruit IO, or switch to Home Assistant only?"
 - **Performance impact**: "This library is 5MB - OK for Pi Zero?"
 - **Logging changes**: "This adds logging - is that acceptable for microSD longevity?"
-- **Feed names**: "What should I name the new Adafruit IO feed?"
+- **Feed/sensor names**: "What should I name this in Adafruit IO and Home Assistant?"
 - **Temperature compensation**: "Want me to test different compensation factors?"
 - **Cron frequency**: "Free tier allows 30/min - current schedule is every 5 min. Change it?"
+- **Home Assistant setup**: "Do you have Home Assistant and MQTT broker set up already?"
