@@ -68,7 +68,7 @@ In normal operation, CH0 (visible+IR) should be **much higher** than CH1 (IR onl
 
 **Other Sensors: ✓ ALL WORKING NORMALLY**
 - BME280 (temp/pressure/humidity): OK
-- MICS6814 (gas sensors): OK (after fixing stale reading bug)
+- MICS6814 (gas sensors): OK
 - Proximity sensor (IR): OK
 
 The massive drop in sensitivity (~95% reduction) after the physical move, combined with CH0≈CH1, confirms physical damage to the LTR559 visible light photodiode during the move.
@@ -93,65 +93,53 @@ The massive drop in sensitivity (~95% reduction) after the physical move, combin
 
 ---
 
-### Issue #2: Reducing Gas Sensor Shows Limited Variation
+### Issue #2: Gas Sensor "First Reading Discard" Misdiagnosis
 
-**Status**: RESOLVED ✓
+**Status**: RESOLVED ✓ (Reverted incorrect fix)
 **Date Identified**: 2025-11-19 04:00 UTC
-**Date Resolved**: 2025-11-19 14:37 UTC
+**Date "Fixed"**: 2025-11-19 14:37 UTC
+**Date Actually Fixed**: 2025-11-19 21:50 UTC
 
-#### Root Cause: Stale First Reading Bug
+#### Root Cause: MISDIAGNOSIS - Gas sensors work correctly WITHOUT first reading discard
 
-The issue was **not** a hardware problem - it was a software bug identical to the BME280 first reading issue.
+The MICS6814 gas sensor does **NOT** have a stale first reading problem like the BME280. Applying the BME280 fix to gas sensors was a mistake that broke the readings.
 
-#### Symptoms
+#### What Happened
 
-1. Reducing sensor alternated between exactly two high values:
-   - 6104.0 kΩ (most common)
-   - 6788.44 kΩ (occasional)
-   - Rare: 5544.0 kΩ
+1. Reducing sensor showed repetitive values (6104.0/6788.44 kΩ)
+2. Assumed this was a "stale reading bug" like BME280
+3. Applied "discard first reading" fix at 14:37
+4. **All three gas sensors immediately dropped 88-98%**:
+   - Oxidising: 489-906 kΩ → 9-18 kΩ (98% drop)
+   - Reducing: 6104 kΩ → 245-354 kΩ (94% drop)
+   - NH3: 1900-4300 kΩ → 96-255 kΩ (95% drop)
 
-2. Much less variation than expected
+#### Actual Root Cause
 
-3. Pattern appeared rigid/repetitive
+The repetitive values **were correct**. The indoor air quality was simply stable, causing consistent readings. This is normal sensor behavior.
 
-#### Diagnosis
+#### Correct Fix
 
-Testing revealed that the MICS6814 gas sensor ADC returns **stale data on first read**, just like the BME280:
-
-**Trial 1 (after 10 second idle):**
-- First reading: Reducing=**6104.00 kΩ** (stale!)
-- Second reading: Reducing=479.65 kΩ (fresh)
-- Difference: +5624 kΩ stale data error
-
-**Trial 2 & 3 (immediately after Trial 1):**
-- No difference between readings (data was already fresh)
-
-#### Fix Applied
-
-Updated both `publish_to_adafruit.py` and `read_sensors.py` to discard the first gas sensor reading:
+**Removed** the first reading discard for MICS6814. Gas sensors should be read directly:
 
 ```python
-# Gas sensors (discard first reading - MICS6814 returns stale data)
-_ = gas.read_all()
-time.sleep(0.1)  # Brief delay for sensor stabilization
+# Gas sensors - read directly (NO first reading discard needed)
 gas_data = gas.read_all()
 ```
 
-#### Verification
+#### Verification After Revert
 
-After fix:
-- Cron job at 14:40: Reducing=**354.67 kΩ** ✓
-- Manual test: Reducing=**341.42 kΩ** ✓
-- Test run: Reducing=**365.92 kΩ** ✓
-
-All values are now in the normal range (300-700 kΩ) and show proper variation.
+Gas sensors returned to normal values matching historical data:
+- Oxidising: 374.77 kΩ ✓
+- Reducing: 6104.00 kΩ ✓
+- NH3: 1810.67 kΩ ✓
 
 #### Key Lesson
 
-**All analog sensors on the Enviro+ HAT require first reading discard:**
-- ✓ BME280 (temperature/pressure/humidity)
-- ✓ MICS6814 (gas sensors)
-- ? LTR559 (may need investigation, but uses I2C not ADC)
+**Only BME280 requires first reading discard:**
+- ✓ BME280 (temperature/pressure/humidity) - REQUIRES discard
+- ✗ MICS6814 (gas sensors) - NO discard needed
+- ? LTR559 (light/proximity) - Unknown (I2C, probably no discard needed)
 
 ---
 
@@ -183,17 +171,17 @@ All values are now in the normal range (300-700 kΩ) and show proper variation.
   - RUN `read_sensors.py` manually to verify compensation math
 
 #### MICS6814 (Gas Sensors)
-- **ALWAYS discard first reading** - MICS6814 returns stale data on first read (discovered 2025-11-19)
-- Include 0.1 second delay after discarding first reading
+- **DO NOT discard first reading** - Unlike BME280, gas sensors work correctly on first read
 - Gas sensors need 10-48 hour warm-up period for stable readings
 - **Test any changes over a 10+ minute period** minimum
 - Remember: readings are resistance values, not concentrations
 - Lower resistance = gas detected, higher resistance = cleaner air
 - Never add "concentration" calculations without proper calibration
+- Repetitive values are normal when air quality is stable
 
 #### General Sensor Rules
 - Always test with `read_sensors.py` before modifying `publish_to_adafruit.py`
-- Maintain the "discard first reading" pattern for BME280 and MICS6814
+- Only BME280 requires "discard first reading" pattern
 - Keep sensor reading code in a try/except block
 - Log sensor errors but continue execution when possible
 
@@ -300,7 +288,7 @@ The project now supports dual publishing to both Adafruit IO and Home Assistant.
 5. **Don't forget the virtual environment** - All pip installs and python runs need it activated
 6. **Don't commit .env file** - Check git status before committing
 7. **Don't remove the BME280 first reading discard** - It's essential for accuracy
-8. **Don't remove the MICS6814 first reading discard** - Also essential (discovered 2025-11-19)
+8. **Don't add first reading discard to MICS6814** - Gas sensors work correctly on first read
 9. **Don't use 'lux' as unit for illuminance device_class** - Use 'lx' for Home Assistant
 10. **Don't forget to test both publishing destinations** - If both enabled, verify both work
 11. **Don't skip checking Home Assistant logs** - MQTT discovery errors only appear there

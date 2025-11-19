@@ -117,9 +117,7 @@ def read_sensors():
         sensors['light'] = round(ltr559.get_lux(), 2)
         sensors['proximity'] = round(ltr559.get_proximity(), 2)
 
-        # Gas sensors (discard first reading - MICS6814 returns stale data)
-        _ = gas.read_all()
-        time.sleep(0.1)  # Brief delay for sensor stabilization
+        # Gas sensors
         gas_data = gas.read_all()
         sensors['oxidising'] = round(gas_data.oxidising / 1000, 2)
         sensors['reducing'] = round(gas_data.reducing / 1000, 2)
