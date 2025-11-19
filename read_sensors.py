@@ -73,7 +73,17 @@ def main():
     print("-" * 40)
     lux = ltr559.get_lux()
     proximity = ltr559.get_proximity()
+    ch0, ch1 = ltr559.get_raw_als()
+
+    # Check for hardware failure
+    is_light_sensor_failed = ch1 > 0 and ch0 <= ch1 and lux < 20
+
     print(f"  Light:             {lux:.2f} Lux")
+    if is_light_sensor_failed:
+        print(f"  ⚠️  WARNING: Light sensor hardware failure detected!")
+        print(f"      CH0 (Visible+IR): {ch0}")
+        print(f"      CH1 (IR only):    {ch1}")
+        print(f"      (CH1 >= CH0 indicates visible photodiode failure)")
     print(f"  Proximity:         {proximity:.2f}")
     print()
 

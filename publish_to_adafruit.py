@@ -114,7 +114,18 @@ def read_sensors():
         sensors['humidity'] = round(bme280.get_humidity(), 2)
 
         # Light and Proximity
-        sensors['light'] = round(ltr559.get_lux(), 2)
+        lux = round(ltr559.get_lux(), 2)
+        ch0, ch1 = ltr559.get_raw_als()
+
+        # Check for hardware failure signature (visible light photodiode failure)
+        # When CH1 (IR) >= CH0 (Visible+IR), the visible photodiode is not working
+        is_light_sensor_failed = ch1 > 0 and ch0 <= ch1 and lux < 20
+
+        if is_light_sensor_failed:
+            logging.warning(f"Light sensor hardware failure detected (CH0={ch0}, CH1={ch1}, lux={lux}). Skipping light sensor publish.")
+        else:
+            sensors['light'] = lux
+
         sensors['proximity'] = round(ltr559.get_proximity(), 2)
 
         # Gas sensors
