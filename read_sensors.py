@@ -80,6 +80,9 @@ def main():
     # === MICS6814: Gas Sensor ===
     print("MICS6814 (Gas Sensor)")
     print("-" * 40)
+    # Discard first reading (MICS6814 returns stale data on first read)
+    _ = gas.read_all()
+    time.sleep(0.1)  # Brief delay for sensor stabilization
     gas_readings = gas.read_all()
     print(f"  Oxidising:         {gas_readings.oxidising / 1000:.2f} kΩ")
     print(f"  Reducing:          {gas_readings.reducing / 1000:.2f} kΩ")
