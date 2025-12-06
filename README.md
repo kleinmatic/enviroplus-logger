@@ -228,8 +228,30 @@ The sensors will appear with proper units, icons, and device classes for best Ho
 **Temperature (°C)**
 - Measures ambient air temperature
 - Note: The BME280 can be heated by the Raspberry Pi CPU
-- The script includes optional compensation (adjust `TEMP_COMPENSATION_FACTOR` in the script)
+- The script includes optional compensation (adjust `TEMP_COMPENSATION_FACTOR` in `.env`)
 - Set factor to `0` to disable compensation and use raw readings
+- **Calibration required** when changing mounting orientation (horizontal→vertical, wall mount, etc.)
+
+#### Temperature Calibration
+
+If temperature readings are inaccurate, use the calibration tool:
+
+```bash
+source ~/.virtualenvs/pimoroni/bin/activate
+python3 ~/Code/enviroplus-logger/display_temperature.py
+```
+
+This displays the compensated temperature on the LCD screen with:
+- **Rolling average** of last 10 readings (100 seconds)
+- **10-second updates** for stable readings
+- **Large green digits** visible from a distance
+
+Compare the displayed temperature with a reference thermometer and adjust `TEMP_COMPENSATION_FACTOR` in `.env`:
+- **Higher factor** = less compensation (increases displayed temp)
+- **Lower factor** = more compensation (decreases displayed temp)
+- Current calibration: `1.43` for vertical wall mounting
+
+Press **Ctrl+C** to exit the calibration tool.
 
 **Pressure (hPa)**
 - Atmospheric pressure in hectopascals

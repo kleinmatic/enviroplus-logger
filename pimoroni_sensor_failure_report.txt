@@ -1,0 +1,41 @@
+LTR-559 Light Sensor Failure Report
+
+Problem: Light sensor reading ~1/15th of expected values after device was physically moved on 2025-11-16. Kitchen lights + flashlight at 2-3 inches reads only 26-30 lux (should be 500-5000+ lux).
+
+Diagnosis: Visible light photodiode failure. IR photodiode still functional.
+
+Troubleshooting Steps (performed with Claude Code assistance):
+
+1. Power system check - PASSED
+   - `vcgencmd get_throttled` = 0x0 (no undervoltage)
+   - Tested different power outlet/charger - no change
+
+2. I2C communication check - PASSED
+   - Device detected at 0x23
+   - Part ID: 0x92 ✓, Manufacturer ID: 0x05 ✓
+   - Register reads/writes working normally
+
+3. High-sensitivity test - FAILED
+   ```python
+   sensor.set_light_options(active=True, gain=96)
+   sensor.set_light_integration_time_ms(400)
+   ```
+   With bright flashlight at 1-2 inches:
+   ```
+   CH0 (visible+IR): ~1500
+   CH1 (IR only):    ~1530
+   Lux: ~8.9
+   ```
+   Expected: CH0 >> CH1, lux 500-5000+
+
+4. Software reset attempt - NO EFFECT
+   ```python
+   bus.write_byte_data(0x23, 0x80, 0x02)  # SW_RESET
+   ```
+   Failure signature persisted after reset
+
+Smoking gun: CH1 ≥ CH0 in all tests. In normal operation, CH0 (visible+IR) should be much higher than CH1 (IR only) when detecting visible light. The fact that CH1 ≥ CH0 proves the visible light photodiode is non-functional while the IR photodiode still works (proximity detection confirms this).
+
+Other sensors: BME280, MICS6814, and proximity all working normally.
+
+Conclusion: Hardware failure of LTR-559 visible light photodiode, likely caused during physical move of device.

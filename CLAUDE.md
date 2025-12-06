@@ -169,6 +169,12 @@ Gas sensors returned to normal values matching historical data:
   - Test with factor=0 (disabled), factor=10, and factor=20
   - Document the tested values in commit message
   - RUN `read_sensors.py` manually to verify compensation math
+- **Temperature Calibration Tool**: Use `display_temperature.py` for calibration
+  - Displays compensated temperature on LCD screen with rolling average (10 readings over 100 seconds)
+  - Updates every 10 seconds for stable readings
+  - Compare displayed value against reference thermometer
+  - Current calibration: factor=1.43 for vertical wall mounting (Dec 2025)
+  - Mounting orientation affects heat dissipation and requires recalibration
 
 #### MICS6814 (Gas Sensors)
 - **DO NOT discard first reading** - Unlike BME280, gas sensors work correctly on first read
@@ -385,6 +391,7 @@ source ~/.virtualenvs/pimoroni/bin/activate
 enviroplus-logger/
 ├── publish_to_adafruit.py  # Main script (cron-friendly)
 ├── read_sensors.py          # Simple sensor test script
+├── display_temperature.py   # Temperature calibration display tool
 ├── setup_adafruit.sh        # Dependency installer
 ├── .env                     # Credentials (NOT in git)
 ├── .env.example             # Template for credentials
@@ -618,6 +625,13 @@ vcgencmd measure_temp
 
 ### Version History
 
+- **v2.2** (2025-12-06): Temperature calibration for vertical wall mounting
+  - Created `display_temperature.py` calibration tool with LCD display
+  - Displays compensated temperature with rolling average (10 readings, 100s window)
+  - Calibrated TEMP_COMPENSATION_FACTOR from 1.71 to 1.43 for vertical wall mount
+  - 10-second update interval for stable readings
+  - Mounting orientation significantly affects heat dissipation from CPU
+
 - **v2.1** (2025-11-19): Fixed gas sensor stale reading bug
   - Added first reading discard for MICS6814 gas sensors
   - Resolves issue with alternating 6104.0/6788.44 kΩ readings
@@ -644,7 +658,9 @@ vcgencmd measure_temp
 2. **Missing python-dotenv**: Script will fail to read `.env` - install with `pip install python-dotenv`
 3. **Missing paho-mqtt**: Required for Home Assistant integration - install with `pip install paho-mqtt`
 4. **Light sensor unit**: Must use unit 'lx' not 'lux' for Home Assistant illuminance device_class
-5. **Stale first readings**: BME280 and MICS6814 require first reading discard
+5. **Stale first readings**: BME280 requires first reading discard (MICS6814 does NOT)
+6. **Temperature recalibration**: Required after changing device mounting orientation (horizontal→vertical, wall mount, etc.)
+7. **Pi OS version**: Current Pi OS is Debian 13 (as of Aug 2024). Pimoroni officially supports Debian 12 but libraries work fine on Debian 13.
 
 ### Important Paths
 - **Project location**: `~/Code/enviroplus-logger`

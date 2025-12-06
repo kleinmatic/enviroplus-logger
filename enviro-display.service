@@ -1,0 +1,14 @@
+[Unit]
+Description=Enviro+ Temperature Display
+After=network.target
+
+[Service]
+Type=simple
+User=kleinmatic
+WorkingDirectory=/home/kleinmatic/Code/enviroplus-logger
+ExecStart=/home/kleinmatic/.virtualenvs/pimoroni/bin/python3 /home/kleinmatic/Code/enviroplus-logger/display_temperature.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
